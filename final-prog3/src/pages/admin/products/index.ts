@@ -1,6 +1,6 @@
 import type { Categoria, Producto } from "../../../types";
 import { getCategoriasStore, getProductosStore, saveProductosStore,} from "../../../utils/dataStore";
-import { logout } from "../../../utils/auth";
+import { getUsuarioLogueado, logout } from "../../../utils/auth";
 
 
 
@@ -18,6 +18,7 @@ function guardarProductos(productos: Producto[]) {
 
 export async function renderAdminProducts() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
+  const usuario = getUsuarioLogueado();
 
   let productos = await cargarProductos();
   let categorias = await cargarCategorias();
@@ -32,29 +33,30 @@ export async function renderAdminProducts() {
 
     app.innerHTML = `
       <header class="topbar">
-        <h1>Food Store Admin</h1>
+        <h1>🍕 Food Store</h1>
         <nav>
-          <button id="goStore">Ver tienda</button>
-          <button id="logoutBtn">Salir</button>
+          <button id="goStore">Tienda</button>
+          <button id="goDashboard">Panel Admin</button>
+          <span class="nav-user">${usuario?.nombre ?? ""} ${usuario?.apellido ?? ""}</span>
+          <button id="logoutBtn" class="btn-logout">Cerrar Sesión</button>
         </nav>
       </header>
 
       <main class="admin-layout">
         <aside class="admin-sidebar">
-          <h3>Panel</h3>
-          <button id="goDashboard">Dashboard</button>
-          <button id="goCategories">Categorías</button>
-          <button id="goProducts">Productos</button>
-          <button id="goOrders">Pedidos</button>
+          <h3>Administración</h3>
+          <p class="sidebar-subtitle">Panel de control</p>
+          <button id="goDashboardSide">📊 Dashboard</button>
+          <button id="goCategoriesSide">📁 Categorías</button>
+          <button class="active-admin-link" id="goProductsSide">🍔 Productos</button>
+          <button id="goOrdersSide">📦 Pedidos</button>
+          <button id="goStoreSide">🏪 Ir Tienda</button>
         </aside>
 
         <section class="admin-content">
           <div class="admin-header">
-            <div>
-              <h2>Gestión de Productos</h2>
-              <p>Alta, edición y baja lógica de productos.</p>
-            </div>
-            <button id="newProduct" class="btn-primary">+ Nuevo producto</button>
+            <h2>Gestión de Productos</h2>
+            <button id="newProduct" class="btn-new">+ Nuevo Producto</button>
           </div>
 
           <div class="table-card">
@@ -85,11 +87,11 @@ export async function renderAdminProducts() {
                               <td><img src="${p.imagen}" alt="${p.nombre}" class="table-img" /></td>
                               <td>${p.nombre}</td>
                               <td>${p.descripcion}</td>
-                              <td>$${p.precio}</td>
+                              <td>$${p.precio.toLocaleString("es-AR")}</td>
                               <td>${getCategoriaNombre(p.categoriaId)}</td>
                               <td>${p.stock}</td>
-                              <td>${p.disponible ? "Disponible" : "No disponible"}</td>
-                              <td>
+                              <td><span class="estado-indicator ${p.disponible ? "estado-on" : "estado-off"}"></span></td>
+                              <td class="table-actions">
                                 <button class="edit-btn" data-id="${p.id}">Editar</button>
                                 <button class="delete-btn" data-id="${p.id}">Eliminar</button>
                               </td>
@@ -129,10 +131,12 @@ export async function renderAdminProducts() {
 
   function conectarNavegacion() {
     document.querySelector("#goStore")?.addEventListener("click", () => location.hash = "#/home");
+    document.querySelector("#goStoreSide")?.addEventListener("click", () => location.hash = "#/home");
     document.querySelector("#goDashboard")?.addEventListener("click", () => location.hash = "#/admin");
-    document.querySelector("#goCategories")?.addEventListener("click", () => location.hash = "#/admin/categories");
-    document.querySelector("#goProducts")?.addEventListener("click", () => location.hash = "#/admin/products");
-    document.querySelector("#goOrders")?.addEventListener("click", () => location.hash = "#/admin/orders");
+    document.querySelector("#goDashboardSide")?.addEventListener("click", () => location.hash = "#/admin");
+    document.querySelector("#goCategoriesSide")?.addEventListener("click", () => location.hash = "#/admin/categories");
+    document.querySelector("#goProductsSide")?.addEventListener("click", () => location.hash = "#/admin/products");
+    document.querySelector("#goOrdersSide")?.addEventListener("click", () => location.hash = "#/admin/orders");
 
     document.querySelector("#logoutBtn")?.addEventListener("click", () => {
       logout();
@@ -162,20 +166,23 @@ export async function renderAdminProducts() {
     modal.innerHTML = `
       <div class="modal-backdrop">
         <section class="modal">
-          <h2>${producto ? "Editar Producto" : "Nuevo Producto"}</h2>
+          <div class="modal-header">
+            <h2>${producto ? "Editar Producto" : "Nuevo Producto"}</h2>
+            <button id="cancelModal" class="modal-close">✕</button>
+          </div>
 
           <form id="productForm">
             <label>Nombre</label>
-            <input id="nombre" required value="${producto?.nombre ?? ""}" />
+            <input id="nombre" required value="${producto?.nombre ?? ""}" placeholder="Nombre del producto" />
 
             <label>Descripción</label>
-            <textarea id="descripcion" required>${producto?.descripcion ?? ""}</textarea>
+            <textarea id="descripcion" required placeholder="Descripción del producto">${producto?.descripcion ?? ""}</textarea>
 
             <label>Precio</label>
-            <input id="precio" type="number" min="1" step="0.01" required value="${producto?.precio ?? ""}" />
+            <input id="precio" type="number" min="1" step="0.01" required value="${producto?.precio ?? ""}" placeholder="0.00" />
 
             <label>Stock</label>
-            <input id="stock" type="number" min="0" required value="${producto?.stock ?? ""}" />
+            <input id="stock" type="number" min="0" required value="${producto?.stock ?? ""}" placeholder="0" />
 
             <label>Categoría</label>
             <select id="categoriaId" required>
@@ -190,19 +197,15 @@ export async function renderAdminProducts() {
                 .join("")}
             </select>
 
-            <label>URL de imagen</label>
-            <input id="imagen" required value="${producto?.imagen ?? ""}" />
+            <label>URL de Imagen</label>
+            <input id="imagen" required value="${producto?.imagen ?? ""}" placeholder="https://ejemplo.com/imagen.jpg" />
 
-            <label>Disponible</label>
-            <select id="disponible">
-              <option value="true" ${producto?.disponible !== false ? "selected" : ""}>Sí</option>
-              <option value="false" ${producto?.disponible === false ? "selected" : ""}>No</option>
-            </select>
-
-            <div class="modal-actions">
-              <button type="button" id="cancelModal">Cancelar</button>
-              <button type="submit" class="btn-primary">Guardar</button>
+            <div class="checkbox-field">
+              <input type="checkbox" id="disponible" ${producto?.disponible !== false ? "checked" : ""} />
+              <label for="disponible">Producto disponible</label>
             </div>
+
+            <button type="submit" class="btn-primary btn-block">Guardar</button>
           </form>
 
           <p id="productError" class="error"></p>
@@ -221,7 +224,7 @@ export async function renderAdminProducts() {
       const stock = Number((document.querySelector<HTMLInputElement>("#stock")!).value);
       const categoriaId = Number((document.querySelector<HTMLSelectElement>("#categoriaId")!).value);
       const imagen = (document.querySelector<HTMLInputElement>("#imagen")!).value.trim();
-      const disponible = (document.querySelector<HTMLSelectElement>("#disponible")!).value === "true";
+      const disponible = (document.querySelector<HTMLInputElement>("#disponible")!).checked;
 
       const error = document.querySelector<HTMLParagraphElement>("#productError")!;
 

@@ -1,6 +1,6 @@
 import type { Categoria } from "../../../types";
 import { getCategoriasStore, saveCategoriasStore } from "../../../utils/dataStore";
-import { logout } from "../../../utils/auth";
+import { getUsuarioLogueado, logout } from "../../../utils/auth";
 
 
 
@@ -14,6 +14,7 @@ function guardarCategorias(categorias: Categoria[]) {
 
 export async function renderAdminCategories() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
+  const usuario = getUsuarioLogueado();
   let categorias = await cargarCategorias();
 
   function render() {
@@ -21,29 +22,30 @@ export async function renderAdminCategories() {
 
     app.innerHTML = `
       <header class="topbar">
-        <h1>Food Store Admin</h1>
+        <h1>🍕 Food Store</h1>
         <nav>
-          <button id="goStore">Ver tienda</button>
-          <button id="logoutBtn">Salir</button>
+          <button id="goStore">Tienda</button>
+          <button id="goDashboard">Panel Admin</button>
+          <span class="nav-user">${usuario?.nombre ?? ""} ${usuario?.apellido ?? ""}</span>
+          <button id="logoutBtn" class="btn-logout">Cerrar Sesión</button>
         </nav>
       </header>
 
       <main class="admin-layout">
         <aside class="admin-sidebar">
-          <h3>Panel</h3>
-          <button id="goDashboard">Dashboard</button>
-          <button id="goCategories">Categorías</button>
-          <button id="goProducts">Productos</button>
-          <button id="goOrders">Pedidos</button>
+          <h3>Administración</h3>
+          <p class="sidebar-subtitle">Panel de control</p>
+          <button id="goDashboardSide">📊 Dashboard</button>
+          <button class="active-admin-link" id="goCategoriesSide">📁 Categorías</button>
+          <button id="goProductsSide">🍔 Productos</button>
+          <button id="goOrdersSide">📦 Pedidos</button>
+          <button id="goStoreSide">🏪 Ir Tienda</button>
         </aside>
 
         <section class="admin-content">
           <div class="admin-header">
-            <div>
-              <h2>Gestión de Categorías</h2>
-              <p>Alta, edición y baja lógica de categorías.</p>
-            </div>
-            <button id="newCategory" class="btn-primary">+ Nueva categoría</button>
+            <h2>Gestión de Categorías</h2>
+            <button id="newCategory" class="btn-new">+ Nueva Categoría</button>
           </div>
 
           <div class="table-card">
@@ -70,7 +72,7 @@ export async function renderAdminCategories() {
                               <td><img src="${c.imagen}" alt="${c.nombre}" class="table-img" /></td>
                               <td>${c.nombre}</td>
                               <td>${c.descripcion}</td>
-                              <td>
+                              <td class="table-actions">
                                 <button class="edit-btn" data-id="${c.id}">Editar</button>
                                 <button class="delete-btn" data-id="${c.id}">Eliminar</button>
                               </td>
@@ -112,10 +114,12 @@ export async function renderAdminCategories() {
 
   function conectarNavegacion() {
     document.querySelector("#goStore")?.addEventListener("click", () => location.hash = "#/home");
+    document.querySelector("#goStoreSide")?.addEventListener("click", () => location.hash = "#/home");
     document.querySelector("#goDashboard")?.addEventListener("click", () => location.hash = "#/admin");
-    document.querySelector("#goCategories")?.addEventListener("click", () => location.hash = "#/admin/categories");
-    document.querySelector("#goProducts")?.addEventListener("click", () => location.hash = "#/admin/products");
-    document.querySelector("#goOrders")?.addEventListener("click", () => location.hash = "#/admin/orders");
+    document.querySelector("#goDashboardSide")?.addEventListener("click", () => location.hash = "#/admin");
+    document.querySelector("#goCategoriesSide")?.addEventListener("click", () => location.hash = "#/admin/categories");
+    document.querySelector("#goProductsSide")?.addEventListener("click", () => location.hash = "#/admin/products");
+    document.querySelector("#goOrdersSide")?.addEventListener("click", () => location.hash = "#/admin/orders");
 
     document.querySelector("#logoutBtn")?.addEventListener("click", () => {
       logout();
@@ -129,22 +133,22 @@ export async function renderAdminCategories() {
     modal.innerHTML = `
       <div class="modal-backdrop">
         <section class="modal">
-          <h2>Nueva Categoría</h2>
+          <div class="modal-header">
+            <h2>Nueva Categoría</h2>
+            <button id="cancelModal" class="modal-close">✕</button>
+          </div>
 
           <form id="categoryForm">
             <label>Nombre</label>
-            <input id="nombre" required />
+            <input id="nombre" required placeholder="Nombre de la categoría" />
 
             <label>Descripción</label>
-            <textarea id="descripcion" required></textarea>
+            <textarea id="descripcion" required placeholder="Descripción de la categoría"></textarea>
 
-            <label>URL de imagen</label>
-            <input id="imagen" required />
+            <label>URL de Imagen</label>
+            <input id="imagen" required placeholder="https://ejemplo.com/imagen.jpg" />
 
-            <div class="modal-actions">
-              <button type="button" id="cancelModal">Cancelar</button>
-              <button type="submit" class="btn-primary">Guardar</button>
-            </div>
+            <button type="submit" class="btn-primary btn-block">Crear</button>
           </form>
 
           <p id="categoryError" class="error"></p>
@@ -192,7 +196,10 @@ export async function renderAdminCategories() {
     modal.innerHTML = `
       <div class="modal-backdrop">
         <section class="modal">
-          <h2>Editar Categoría</h2>
+          <div class="modal-header">
+            <h2>Editar Categoría</h2>
+            <button id="cancelModal" class="modal-close">✕</button>
+          </div>
 
           <form id="categoryForm">
             <label>Nombre</label>
@@ -201,13 +208,10 @@ export async function renderAdminCategories() {
             <label>Descripción</label>
             <textarea id="descripcion" required>${categoria.descripcion}</textarea>
 
-            <label>URL de imagen</label>
+            <label>URL de Imagen</label>
             <input id="imagen" value="${categoria.imagen}" required />
 
-            <div class="modal-actions">
-              <button type="button" id="cancelModal">Cancelar</button>
-              <button type="submit" class="btn-primary">Guardar cambios</button>
-            </div>
+            <button type="submit" class="btn-primary btn-block">Guardar</button>
           </form>
 
           <p id="categoryError" class="error"></p>

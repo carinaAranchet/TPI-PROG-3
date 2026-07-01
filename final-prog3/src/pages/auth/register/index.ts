@@ -8,24 +8,18 @@ export function renderRegister() {
   app.innerHTML = `
     <main class="auth-page">
       <section class="auth-card">
-        <h1>Food Store</h1>
+        <h1>SuperFood</h1>
         <h2>Registro</h2>
 
         <form id="registerForm">
           <label>Nombre</label>
-          <input type="text" id="nombre" required />
-
-          <label>Apellido</label>
-          <input type="text" id="apellido" required />
+          <input type="text" id="nombre" required placeholder="Ingresá tu nombre completo" />
 
           <label>Email</label>
-          <input type="email" id="mail" required />
-
-          <label>Celular</label>
-          <input type="text" id="celular" required />
+          <input type="email" id="mail" required placeholder="correo@ejemplo.com" />
 
           <label>Contraseña</label>
-          <input type="password" id="password" required minlength="6" />
+          <input type="password" id="password" required minlength="6" placeholder="Mínimo 6 caracteres" />
 
           <button type="submit">Registrarme</button>
         </form>
@@ -55,9 +49,7 @@ export function renderRegister() {
     const usuarios = await getUsuariosStore();
 
     const nombre = (document.querySelector<HTMLInputElement>("#nombre")!).value.trim();
-    const apellido = (document.querySelector<HTMLInputElement>("#apellido")!).value.trim();
     const mail = (document.querySelector<HTMLInputElement>("#mail")!).value.trim();
-    const celular = (document.querySelector<HTMLInputElement>("#celular")!).value.trim();
     const password = (document.querySelector<HTMLInputElement>("#password")!).value.trim();
 
     const existe = usuarios.some((u) => u.mail === mail);
@@ -70,15 +62,15 @@ export function renderRegister() {
     const nuevoUsuario: Usuario = {
       id: Date.now(),
       nombre,
-      apellido,
+      apellido: "",
       mail,
-      celular,
+      celular: "",
       password,
       rol: "USUARIO",
     };
 
     usuarios.push(nuevoUsuario);
-    await saveUsuariosStore(usuarios);
+    saveUsuariosStore(usuarios);
 
     login(nuevoUsuario);
     location.hash = "#/home";

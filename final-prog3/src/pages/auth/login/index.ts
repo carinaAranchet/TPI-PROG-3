@@ -1,4 +1,3 @@
-import type { Usuario } from "../../../types";
 import { getUsuariosStore } from "../../../utils/dataStore";
 import { login } from "../../../utils/auth";
 
@@ -8,15 +7,15 @@ export function renderLogin() {
   app.innerHTML = `
     <main class="auth-page">
       <section class="auth-card">
-        <h1>Food Store</h1>
-        <h2>Iniciar sesión</h2>
+        <h1>SuperFood</h1>
+        <h2>Iniciar Sesión</h2>
 
         <form id="loginForm">
           <label>Email</label>
-          <input type="email" id="mail" required placeholder="admin@foodstore.com" />
+          <input type="email" id="mail" required placeholder="correo@ejemplo.com" />
 
           <label>Contraseña</label>
-          <input type="password" id="password" required placeholder="admin123" />
+          <input type="password" id="password" required placeholder="Tu contraseña" />
 
           <button type="submit">Ingresar</button>
         </form>
@@ -27,6 +26,12 @@ export function renderLogin() {
           ¿No tenés cuenta?
           <a href="#" id="goRegister">Registrarse</a>
         </p>
+
+        <div class="auth-hints">
+          <p><strong>Usuarios de prueba:</strong></p>
+          <p>Admin: admin@foodstore.com / admin123</p>
+          <p>Cliente: cliente@foodstore.com / cliente123</p>
+        </div>
       </section>
     </main>
   `;

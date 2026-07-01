@@ -1,5 +1,5 @@
 import type { FormaPago, Pedido } from "../../../types";
-import { getUsuarioLogueado } from "../../../utils/auth";
+import { getUsuarioLogueado, logout } from "../../../utils/auth";
 import {
   clearCart,
   getCart,
@@ -8,7 +8,7 @@ import {
   updateQuantity,
 } from "../../../utils/cart";
 
-const ENVIO = 0;
+const ENVIO = 500;
 
 export function renderCart() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -18,9 +18,12 @@ export function renderCart() {
   if (cart.length === 0) {
     app.innerHTML = `
       <header class="topbar">
-        <h1>Food Store</h1>
+        <h1>🍕 Food Store</h1>
         <nav>
-          <button id="backHome">Volver a tienda</button>
+          <button id="goHome">Inicio</button>
+          <button id="goOrders">Mis Pedidos</button>
+          <span class="nav-user">${usuario?.nombre ?? ""} ${usuario?.apellido ?? ""}</span>
+          <button id="logoutBtn" class="btn-logout">Cerrar Sesión</button>
         </nav>
       </header>
 
@@ -28,18 +31,15 @@ export function renderCart() {
         <section class="empty-state">
           <h2>Tu carrito está vacío</h2>
           <p>Agregá productos desde el catálogo.</p>
-          <button id="goHome" class="btn-primary">Ir a la tienda</button>
+          <button id="goHome2" class="btn-primary">Ir a la tienda</button>
         </section>
       </main>
     `;
 
-    document.querySelector("#backHome")?.addEventListener("click", () => {
-      location.hash = "#/home";
-    });
-
-    document.querySelector("#goHome")?.addEventListener("click", () => {
-      location.hash = "#/home";
-    });
+    document.querySelector("#goHome")?.addEventListener("click", () => location.hash = "#/home");
+    document.querySelector("#goHome2")?.addEventListener("click", () => location.hash = "#/home");
+    document.querySelector("#goOrders")?.addEventListener("click", () => location.hash = "#/my-orders");
+    document.querySelector("#logoutBtn")?.addEventListener("click", () => { logout(); location.hash = "#/login"; });
 
     return;
   }
@@ -49,16 +49,20 @@ export function renderCart() {
 
   app.innerHTML = `
     <header class="topbar">
-      <h1>Food Store</h1>
+      <h1>🍕 Food Store</h1>
       <nav>
-        <button id="backHome">Volver</button>
-        <button id="clearCart">Vaciar carrito</button>
+        <button id="goHome">Inicio</button>
+        <button id="goOrders">Mis Pedidos</button>
+        ${usuario?.rol === "ADMIN" ? '<button id="goAdmin">Administración</button>' : ""}
+        <button id="goCart">🛒 Cart <span class="cart-badge">${cart.length}</span></button>
+        <span class="nav-user">${usuario?.nombre ?? ""} ${usuario?.apellido ?? ""}</span>
+        <button id="logoutBtn" class="btn-logout">Cerrar Sesión</button>
       </nav>
     </header>
 
     <main class="cart-page">
       <section class="cart-list">
-        <h2>Carrito de compras</h2>
+        <h2>Mi Carrito</h2>
 
         ${cart
           .map(
@@ -67,19 +71,19 @@ export function renderCart() {
                 <img src="${item.producto.imagen}" alt="${item.producto.nombre}" />
                 <div>
                   <h3>${item.producto.nombre}</h3>
-                  <p>$${item.producto.precio} c/u</p>
-                  <p>Stock disponible: ${item.producto.stock}</p>
+                  <p>${item.producto.descripcion}</p>
+                  <p class="cart-item-price">$${item.producto.precio.toLocaleString("es-AR")} c/u</p>
                 </div>
 
                 <div class="quantity-control">
-                  <button class="qty-btn" data-action="minus" data-id="${item.producto.id}">-</button>
+                  <button class="qty-btn" data-action="minus" data-id="${item.producto.id}">−</button>
                   <span>${item.cantidad}</span>
                   <button class="qty-btn" data-action="plus" data-id="${item.producto.id}">+</button>
                 </div>
 
-                <strong>$${item.producto.precio * item.cantidad}</strong>
+                <strong class="cart-item-total">$${(item.producto.precio * item.cantidad).toLocaleString("es-AR")}</strong>
 
-                <button class="remove-btn" data-id="${item.producto.id}">Eliminar</button>
+                <button class="remove-btn" data-id="${item.producto.id}">✕</button>
               </article>
             `
           )
@@ -87,35 +91,26 @@ export function renderCart() {
       </section>
 
       <aside class="checkout-card">
-        <h2>Resumen</h2>
+        <h2>Resumen del Pedido</h2>
 
-        <p>Subtotal: <strong>$${subtotal}</strong></p>
-        <p>Envío: <strong>$${ENVIO}</strong></p>
+        <p><span>Subtotal:</span> <strong>$${subtotal.toLocaleString("es-AR")}</strong></p>
+        <p><span>Envío:</span> <strong>$${ENVIO.toLocaleString("es-AR")}</strong></p>
         <hr />
-        <p>Total: <strong>$${total}</strong></p>
+        <p class="checkout-total"><span>Total:</span> <strong>$${total.toLocaleString("es-AR")}</strong></p>
 
-        <form id="checkoutForm">
-          <label>Teléfono</label>
-          <input type="text" id="telefono" required value="${usuario?.celular ?? ""}" />
-
-          <label>Forma de pago</label>
-          <select id="formaPago" required>
-            <option value="EFECTIVO">Efectivo</option>
-            <option value="TARJETA">Tarjeta</option>
-            <option value="TRANSFERENCIA">Transferencia</option>
-          </select>
-
-          <button type="submit" class="btn-primary">Confirmar pedido</button>
-        </form>
-
-        <p id="message" class="success-message"></p>
+        <button id="openCheckout" class="btn-primary btn-block">Procesar el Pago</button>
+        <button id="clearCart" class="btn-outline btn-block">Vaciar Carrito</button>
       </aside>
     </main>
+
+    <div id="modalContainer"></div>
   `;
 
-  document.querySelector("#backHome")?.addEventListener("click", () => {
-    location.hash = "#/home";
-  });
+  document.querySelector("#goHome")?.addEventListener("click", () => location.hash = "#/home");
+  document.querySelector("#goOrders")?.addEventListener("click", () => location.hash = "#/my-orders");
+  document.querySelector("#goCart")?.addEventListener("click", () => location.hash = "#/cart");
+  document.querySelector("#goAdmin")?.addEventListener("click", () => location.hash = "#/admin");
+  document.querySelector("#logoutBtn")?.addEventListener("click", () => { logout(); location.hash = "#/login"; });
 
   document.querySelector("#clearCart")?.addEventListener("click", () => {
     clearCart();
@@ -145,33 +140,75 @@ export function renderCart() {
     });
   });
 
-  document.querySelector<HTMLFormElement>("#checkoutForm")!.addEventListener("submit", (e) => {
-    e.preventDefault();
+  document.querySelector("#openCheckout")?.addEventListener("click", () => {
+    const modal = document.querySelector<HTMLDivElement>("#modalContainer")!;
 
-    const formaPago = document.querySelector<HTMLSelectElement>("#formaPago")!
-      .value as FormaPago;
+    modal.innerHTML = `
+      <div class="modal-backdrop">
+        <section class="modal">
+          <div class="modal-header">
+            <h2>Completar Pedido</h2>
+            <button id="closeModal" class="modal-close">✕</button>
+          </div>
 
-    const pedidosGuardados = localStorage.getItem("pedidos");
-    const pedidos: Pedido[] = pedidosGuardados ? JSON.parse(pedidosGuardados) : [];
+          <form id="checkoutForm">
+            <label>Teléfono</label>
+            <input type="text" id="telefono" required placeholder="Ej: +54 221 1234567" value="${usuario?.celular ?? ""}" />
 
-    const nuevoPedido: Pedido = {
-      id: Date.now(),
-      fecha: new Date().toISOString().split("T")[0],
-      estado: "PENDIENTE",
-      formaPago,
-      total,
-      idUsuario: usuario!.id,
-      detalles: cart.map((item) => ({
-        idProducto: item.producto.id,
-        cantidad: item.cantidad,
-        subtotal: item.producto.precio * item.cantidad,
-      })),
-    };
+            <label>Dirección de Entrega</label>
+            <input type="text" id="direccion" required placeholder="Calle, número, piso, depto" />
 
-    pedidos.push(nuevoPedido);
-    localStorage.setItem("pedidos", JSON.stringify(pedidos));
-    clearCart();
+            <label>Método de Pago</label>
+            <select id="formaPago" required>
+              <option value="" disabled selected>Seleccione un método</option>
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="TARJETA">Tarjeta</option>
+              <option value="TRANSFERENCIA">Transferencia</option>
+            </select>
 
-    location.hash = "#/my-orders";
+            <label>Notas adicionales (opcional)</label>
+            <textarea id="notas" placeholder="Instrucciones especiales, timbre, etc."></textarea>
+
+            <hr />
+            <p class="checkout-total"><span>Total a pagar:</span> <strong>$${total.toLocaleString("es-AR")}</strong></p>
+
+            <button type="submit" class="btn-primary btn-block">Confirmar Pedido</button>
+          </form>
+        </section>
+      </div>
+    `;
+
+    document.querySelector("#closeModal")?.addEventListener("click", () => {
+      modal.innerHTML = "";
+    });
+
+    document.querySelector<HTMLFormElement>("#checkoutForm")!.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const formaPago = document.querySelector<HTMLSelectElement>("#formaPago")!.value as FormaPago;
+
+      const pedidosGuardados = localStorage.getItem("pedidos");
+      const pedidos: Pedido[] = pedidosGuardados ? JSON.parse(pedidosGuardados) : [];
+
+      const nuevoPedido: Pedido = {
+        id: Date.now(),
+        fecha: new Date().toLocaleString("es-AR"),
+        estado: "PENDIENTE",
+        formaPago,
+        total,
+        idUsuario: usuario!.id,
+        detalles: cart.map((item) => ({
+          idProducto: item.producto.id,
+          cantidad: item.cantidad,
+          subtotal: item.producto.precio * item.cantidad,
+        })),
+      };
+
+      pedidos.push(nuevoPedido);
+      localStorage.setItem("pedidos", JSON.stringify(pedidos));
+      clearCart();
+
+      location.hash = "#/my-orders";
+    });
   });
 }

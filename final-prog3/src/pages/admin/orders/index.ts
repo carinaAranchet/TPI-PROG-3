@@ -1,6 +1,6 @@
-import type { Pedido, Producto, Usuario, EstadoPedido } from "../../../types";
+import type { Pedido, EstadoPedido } from "../../../types";
 import { getPedidosStore, savePedidosStore, getUsuariosStore, getProductosStore, } from "../../../utils/dataStore";
-import { logout } from "../../../utils/auth";
+import { getUsuarioLogueado, logout } from "../../../utils/auth";
 
 
 async function cargarPedidos(): Promise<Pedido[]> {
@@ -13,6 +13,7 @@ function guardarPedidos(pedidos: Pedido[]) {
 
 export async function renderAdminOrders() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
+  const usuarioLogueado = getUsuarioLogueado();
 
   let pedidos = await cargarPedidos();
   const usuarios = await getUsuariosStore();
@@ -34,31 +35,32 @@ export async function renderAdminOrders() {
 
     app.innerHTML = `
       <header class="topbar">
-        <h1>Food Store Admin</h1>
+        <h1>🍕 Food Store</h1>
         <nav>
-          <button id="goStore">Ver tienda</button>
-          <button id="logoutBtn">Salir</button>
+          <button id="goStore">Tienda</button>
+          <button id="goDashboard">Panel Admin</button>
+          <span class="nav-user">${usuarioLogueado?.nombre ?? ""} ${usuarioLogueado?.apellido ?? ""}</span>
+          <button id="logoutBtn" class="btn-logout">Cerrar Sesión</button>
         </nav>
       </header>
 
       <main class="admin-layout">
         <aside class="admin-sidebar">
-          <h3>Panel</h3>
-          <button id="goDashboard">Dashboard</button>
-          <button id="goCategories">Categorías</button>
-          <button id="goProducts">Productos</button>
-          <button id="goOrders">Pedidos</button>
+          <h3>Administración</h3>
+          <p class="sidebar-subtitle">Panel de control</p>
+          <button id="goDashboardSide">📊 Dashboard</button>
+          <button id="goCategoriesSide">📁 Categorías</button>
+          <button id="goProductsSide">🍔 Productos</button>
+          <button class="active-admin-link" id="goOrdersSide">📦 Pedidos</button>
+          <button id="goStoreSide">🏪 Ir Tienda</button>
         </aside>
 
         <section class="admin-content">
           <div class="admin-header">
-            <div>
-              <h2>Gestión de Pedidos</h2>
-              <p>Listado, filtro por estado y cambio de estado.</p>
-            </div>
+            <h2>Gestión de Pedidos</h2>
 
-            <select id="estadoFiltro">
-              <option value="">Todos</option>
+            <select id="estadoFiltro" class="filter-select">
+              <option value="">Todos los pedidos</option>
               <option value="PENDIENTE" ${filtroEstado === "PENDIENTE" ? "selected" : ""}>Pendiente</option>
               <option value="CONFIRMADO" ${filtroEstado === "CONFIRMADO" ? "selected" : ""}>Confirmado</option>
               <option value="TERMINADO" ${filtroEstado === "TERMINADO" ? "selected" : ""}>Terminado</option>
@@ -66,25 +68,29 @@ export async function renderAdminOrders() {
             </select>
           </div>
 
-          <div class="orders-grid">
+          <div class="orders-list">
             ${
               pedidosFiltrados.length === 0
-                ? `<p>No hay pedidos para mostrar.</p>`
+                ? `<p class="empty-msg">No hay pedidos para mostrar.</p>`
                 : pedidosFiltrados
-                    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+                    .sort((a, b) => b.id - a.id)
                     .map(
                       (pedido) => `
                         <article class="order-card">
-                          <h3>Pedido #${pedido.id}</h3>
-                          <p><strong>Cliente:</strong> ${getUsuarioNombre(pedido.idUsuario)}</p>
-                          <p><strong>Fecha:</strong> ${pedido.fecha}</p>
-                          <p><strong>Estado:</strong> <span class="status-badge">${pedido.estado}</span></p>
-                          <p><strong>Productos:</strong> ${pedido.detalles.length}</p>
-                          <p><strong>Total:</strong> $${pedido.total}</p>
-
+                          <div class="order-card-header">
+                            <div>
+                              <h3>Pedido #ORD-${pedido.id}</h3>
+                              <p>Cliente: ${getUsuarioNombre(pedido.idUsuario)}</p>
+                              <p class="order-date">📅 ${pedido.fecha}</p>
+                              <p>${pedido.detalles.length} producto(s)</p>
+                            </div>
+                            <div class="order-card-right">
+                              <span class="status-badge status-${pedido.estado.toLowerCase()}">${pedido.estado}</span>
+                              <strong class="order-total">$${pedido.total.toLocaleString("es-AR")}</strong>
+                            </div>
+                          </div>
                           <div class="order-actions">
                             <button class="detail-btn" data-id="${pedido.id}">Ver detalle</button>
-                            <button class="edit-btn" data-id="${pedido.id}">Cambiar estado</button>
                           </div>
                         </article>
                       `
@@ -108,18 +114,16 @@ export async function renderAdminOrders() {
     document.querySelectorAll<HTMLButtonElement>(".detail-btn").forEach((btn) => {
       btn.addEventListener("click", () => abrirDetalle(Number(btn.dataset.id)));
     });
-
-    document.querySelectorAll<HTMLButtonElement>(".edit-btn").forEach((btn) => {
-      btn.addEventListener("click", () => abrirCambioEstado(Number(btn.dataset.id)));
-    });
   }
 
   function conectarNavegacion() {
     document.querySelector("#goStore")?.addEventListener("click", () => location.hash = "#/home");
+    document.querySelector("#goStoreSide")?.addEventListener("click", () => location.hash = "#/home");
     document.querySelector("#goDashboard")?.addEventListener("click", () => location.hash = "#/admin");
-    document.querySelector("#goCategories")?.addEventListener("click", () => location.hash = "#/admin/categories");
-    document.querySelector("#goProducts")?.addEventListener("click", () => location.hash = "#/admin/products");
-    document.querySelector("#goOrders")?.addEventListener("click", () => location.hash = "#/admin/orders");
+    document.querySelector("#goDashboardSide")?.addEventListener("click", () => location.hash = "#/admin");
+    document.querySelector("#goCategoriesSide")?.addEventListener("click", () => location.hash = "#/admin/categories");
+    document.querySelector("#goProductsSide")?.addEventListener("click", () => location.hash = "#/admin/products");
+    document.querySelector("#goOrdersSide")?.addEventListener("click", () => location.hash = "#/admin/orders");
 
     document.querySelector("#logoutBtn")?.addEventListener("click", () => {
       logout();
@@ -131,64 +135,51 @@ export async function renderAdminOrders() {
     const pedido = pedidos.find((p) => p.id === id);
     if (!pedido) return;
 
+    const subtotal = pedido.detalles.reduce((acc, d) => acc + d.subtotal, 0);
+    const envio = pedido.total - subtotal;
+
     const modal = document.querySelector<HTMLDivElement>("#modalContainer")!;
 
     modal.innerHTML = `
       <div class="modal-backdrop">
         <section class="modal">
-          <h2>Detalle Pedido #${pedido.id}</h2>
+          <div class="modal-header">
+            <h2>Detalle del Pedido #ORD-${pedido.id}</h2>
+            <button id="closeModal" class="modal-close">✕</button>
+          </div>
 
-          <p><strong>Cliente:</strong> ${getUsuarioNombre(pedido.idUsuario)}</p>
-          <p><strong>Fecha:</strong> ${pedido.fecha}</p>
-          <p><strong>Estado:</strong> ${pedido.estado}</p>
-          <p><strong>Forma de pago:</strong> ${pedido.formaPago}</p>
+          <div class="modal-detail-info">
+            <p><strong>Cliente:</strong> ${getUsuarioNombre(pedido.idUsuario)}</p>
+            <p><strong>Fecha:</strong> ${pedido.fecha}</p>
+            <p><strong>Teléfono:</strong> ${usuarios.find(u => u.id === pedido.idUsuario)?.celular || "No disponible"}</p>
+            <p><strong>Método de pago:</strong> ${pedido.formaPago}</p>
+          </div>
 
           <hr />
 
-          <h3>Productos</h3>
-
+          <h3>Productos:</h3>
           ${pedido.detalles
             .map(
               (d) => `
-                <p>
-                  ${getProductoNombre(d.idProducto)}
-                  x ${d.cantidad}
-                  — $${d.subtotal}
-                </p>
+                <div class="order-product-row">
+                  <span>${getProductoNombre(d.idProducto)}</span>
+                  <span>Cantidad: ${d.cantidad}</span>
+                  <strong>$${d.subtotal.toLocaleString("es-AR")}</strong>
+                </div>
               `
             )
             .join("")}
 
+          <div class="order-totals">
+            <p><span>Subtotal:</span> <strong>$${subtotal.toLocaleString("es-AR")}</strong></p>
+            <p><span>Envío:</span> <strong>$${envio.toLocaleString("es-AR")}</strong></p>
+            <p class="order-total-final"><span>Total:</span> <strong>$${pedido.total.toLocaleString("es-AR")}</strong></p>
+          </div>
+
           <hr />
 
-          <h3>Total: $${pedido.total}</h3>
-
-          <div class="modal-actions">
-            <button id="closeModal">Cerrar</button>
-          </div>
-        </section>
-      </div>
-    `;
-
-    document.querySelector("#closeModal")?.addEventListener("click", cerrarModal);
-  }
-
-  function abrirCambioEstado(id: number) {
-    const pedido = pedidos.find((p) => p.id === id);
-    if (!pedido) return;
-
-    const modal = document.querySelector<HTMLDivElement>("#modalContainer")!;
-
-    modal.innerHTML = `
-      <div class="modal-backdrop">
-        <section class="modal">
-          <h2>Cambiar estado</h2>
-
-          <p><strong>Pedido:</strong> #${pedido.id}</p>
-          <p><strong>Estado actual:</strong> ${pedido.estado}</p>
-
           <form id="estadoForm">
-            <label>Nuevo estado</label>
+            <label>Cambiar Estado:</label>
             <select id="nuevoEstado">
               <option value="PENDIENTE" ${pedido.estado === "PENDIENTE" ? "selected" : ""}>PENDIENTE</option>
               <option value="CONFIRMADO" ${pedido.estado === "CONFIRMADO" ? "selected" : ""}>CONFIRMADO</option>
@@ -196,16 +187,13 @@ export async function renderAdminOrders() {
               <option value="CANCELADO" ${pedido.estado === "CANCELADO" ? "selected" : ""}>CANCELADO</option>
             </select>
 
-            <div class="modal-actions">
-              <button type="button" id="cancelModal">Cancelar</button>
-              <button type="submit" class="btn-primary">Guardar</button>
-            </div>
+            <button type="submit" class="btn-primary btn-block">Actualizar Estado</button>
           </form>
         </section>
       </div>
     `;
 
-    document.querySelector("#cancelModal")?.addEventListener("click", cerrarModal);
+    document.querySelector("#closeModal")?.addEventListener("click", cerrarModal);
 
     document.querySelector<HTMLFormElement>("#estadoForm")!.addEventListener("submit", (e) => {
       e.preventDefault();
