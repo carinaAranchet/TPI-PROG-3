@@ -28,6 +28,31 @@ La aplicación consume datos desde archivos JSON locales ubicados en:
 
 Las operaciones de escritura se realizan en memoria y LocalStorage, según lo solicitado para esta iteración educativa.
 
+## Integración futura con API REST
+
+Actualmente el frontend consume archivos JSON locales mediante fetch desde la carpeta public/data.
+
+Esta decisión permite simular el comportamiento de una API y probar los flujos del sistema sin depender todavía de un backend REST.
+
+La carga de datos está centralizada en src/utils/api.ts, por lo que en una futura iteración se podrían reemplazar las rutas actuales:
+
+fetch("/data/productos.json")
+
+por endpoints reales como:
+
+fetch("/api/productos")
+
+De esta forma, las pantallas principales no deberían reescribirse, sino solamente adaptar la capa de acceso a datos.
+
+Ejemplo de equivalencias futuras:
+
+- GET /data/productos.json -> GET /api/productos
+- GET /data/categorias.json -> GET /api/categorias
+- GET /data/usuarios.json -> GET /api/usuarios
+- GET /data/pedidos.json -> GET /api/pedidos
+
+Las operaciones de alta, modificación y baja que hoy se resuelven en memoria o LocalStorage podrían reemplazarse por métodos HTTP como POST, PUT/PATCH y DELETE.
+
 ## Credenciales de prueba
 
 ### Administrador
@@ -54,7 +79,7 @@ cliente123
 
 Para esta iteración se definió el costo de envío como:
 
-ENVIO = 0
+ENVIO = 500
 
 El total del pedido se calcula como:
 
